@@ -42,6 +42,11 @@ const ls=s=>s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt&&b.
 const MAXF=5,MAXP=15,isPh=o=>o.storeType==='ph',cnt=(l,ph)=>l.filter(o=>isPh(o)===ph).length;
 let S={mode:'in',uid:null,u:null,tab:'st',stores:[],sid:null,items:[],cart:{sid:null,l:{}},orders:[],store:null,mitems:[],req:[],mine:[],au:[],as:[],ao:[],ty:'All',signing:0},subs=[],isub=null;
 const clr=()=>{subs.forEach(f=>f());subs=[];if(isub){isub();isub=null}};
+let AC=null;
+const unlock=()=>{try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}};
+document.addEventListener('click',unlock);document.addEventListener('touchstart',unlock);
+function alertNow(msg,soft){toast(msg);try{navigator.vibrate&&navigator.vibrate(soft?[200]:[300,150,300,150,300])}catch(e){}
+ try{unlock();if(AC){(soft?[0]:[0,0.35,0.7]).forEach(d=>{const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=880;g.gain.value=0.25;o.connect(g);g.connect(AC.destination);o.start(AC.currentTime+d);o.stop(AC.currentTime+d+0.2)})}}catch(e){}}
 function toast(x){const e=$('ts');e.textContent=x;e.style.display='block';setTimeout(()=>e.style.display='none',2500)}
 const LB={New:'Waiting for store','Awaiting verification':'Pharmacist verification',Preparing:'Store preparing order','Ready for pickup':'Rider picking up order','Picked up':'Rider on the way',Delivered:'Delivered',Rejected:'Rejected by store'};
 const STP=['New','Preparing','Ready for pickup','Picked up','Delivered'];
@@ -98,10 +103,10 @@ function adminH(){
  S.tab=t;const n=ps.length+pr.length;return hd('Admin')+'<div class="sc">'+h+'</div>'+nv([['aa','✅','Approvals'+(n?' ('+n+')':'')],['ao','📦','Orders'],['ap','👥','People']])}
 async function boot(u){clr();S.uid=u.uid;const d=await getDoc(doc(db,'users',u.uid));S.u=d.exists()?d.data():null;
  if(!S.u){toast('Profile not found');R();return}
- if(S.u.role==='partner'){S.tab='po';subs.push(onSnapshot(doc(db,'stores',S.uid),s=>{S.store=s.exists()?s.data():null;R()}));subs.push(onSnapshot(query(collection(db,'orders'),where('storeId','==',S.uid)),s=>{S.orders=ls(s);R()}));subs.push(onSnapshot(collection(db,'stores',S.uid,'items'),s=>{S.mitems=ls(s);R()}))}
+ if(S.u.role==='partner'){S.tab='po';subs.push(onSnapshot(doc(db,'stores',S.uid),s=>{S.store=s.exists()?s.data():null;R()}));let pi=0;subs.push(onSnapshot(query(collection(db,'orders'),where('storeId','==',S.uid)),s=>{if(pi)s.docChanges().forEach(c=>{if(c.type==='added'&&c.doc.data().status==='New')alertNow('New order received!')});pi=1;S.orders=ls(s);R()}));subs.push(onSnapshot(collection(db,'stores',S.uid,'items'),s=>{S.mitems=ls(s);R()}))}
  else if(S.u.role==='admin'){S.tab='aa';const er=()=>{};subs.push(onSnapshot(collection(db,'users'),s=>{S.au=ls(s);R()},er));subs.push(onSnapshot(collection(db,'stores'),s=>{S.as=ls(s);R()},er));subs.push(onSnapshot(collection(db,'orders'),s=>{S.ao=ls(s);R()},er))}
- else if(S.u.role==='rider'){S.tab='rh';if(S.u.approved){const er=()=>{};subs.push(onSnapshot(query(collection(db,'orders'),where('status','==','Ready for pickup')),s=>{S.req=ls(s);R()},er));subs.push(onSnapshot(query(collection(db,'orders'),where('riderId','==',S.uid)),s=>{S.mine=ls(s);R()},er))}}
- else{S.tab='st';subs.push(onSnapshot(query(collection(db,'stores'),where('approved','==',true)),s=>{S.stores=ls(s);R()}));subs.push(onSnapshot(query(collection(db,'orders'),where('customerId','==',S.uid)),s=>{S.orders=ls(s);R()}))}
+ else if(S.u.role==='rider'){S.tab='rh';if(S.u.approved){const er=()=>{};let ri=0;subs.push(onSnapshot(query(collection(db,'orders'),where('status','==','Ready for pickup')),s=>{if(ri&&S.u.online)s.docChanges().forEach(c=>{if(c.type==='added'&&!c.doc.data().riderId)alertNow('New delivery request!')});ri=1;S.req=ls(s);R()},er));subs.push(onSnapshot(query(collection(db,'orders'),where('riderId','==',S.uid)),s=>{S.mine=ls(s);R()},er))}}
+ else{S.tab='st';subs.push(onSnapshot(query(collection(db,'stores'),where('approved','==',true)),s=>{S.stores=ls(s);R()}));let ci=0;subs.push(onSnapshot(query(collection(db,'orders'),where('customerId','==',S.uid)),s=>{if(ci)s.docChanges().forEach(c=>{if(c.type==='modified'){const st=c.doc.data().status;alertNow('Order update: '+(LB[st]||st),1)}});ci=1;S.orders=ls(s);R()}))}
  R()}
 onAuthStateChanged(auth,async u=>{if(S.signing)return;if(!u){clr();S.uid=null;S.u=null;R();return}await boot(u)});
 window.F={
