@@ -1,0 +1,25 @@
+{
+ "name": "RP Delivery Service",
+ "short_name": "RP Delivery",
+ "description": "Your Local Food & Health Essentials, Delivered Fast.",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#14306B",
+ "theme_color": "#14306B",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any maskable"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any maskable"
+  }
+ ]
+}
